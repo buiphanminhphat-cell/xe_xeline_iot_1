@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Giám sát & Điều khiển AGV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-bg: #00bfa5;
+            --card-bg: #ffffff;
+            --header-green: #00695c;
+            --accent-purple: #6a1b9a;
+            --transition-speed: 0.3s;
+        }
+
+        body {
+            background-color: var(--primary-bg);
+            font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            height: calc(100vh - 40px);
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            transition: transform var(--transition-speed);
+        }
+
+        .panel:hover {
+            transform: translateY(-2px);
+        }
+
+        .header-box {
+            background: linear-gradient(135deg, var(--header-green), #004d40);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Bảng thông tin */
+        .info-table-container {
+            border: 1px solid #f0f0f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .info-table th {
+            background-color: #f8f9fa;
+            color: var(--accent-purple);
+            padding: 12px 8px;
+            font-weight: 600;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-table td {
+            padding: 14px 8px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        /* Robot Preview Visualization */
+        .robot-preview-container {
+            background: #fdfdfd;
+            border: 1px dashed #ddd;
+            border-radius: 16px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+
+        .robot-svg {
+            width: 90px;
+            height: 70px;
+            background: #455a64;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .robot-svg::before, .robot-svg::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 25px;
+            background: #212121;
+            left: -6px;
+            border-radius: 3px;
+        }
+        .robot-svg::before { top: 6px; }
+        .robot-svg::after { bottom: 6px; }
+
+        .direction-indicator {
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #f44336;
+            font-size: 1.2rem;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; transform: translateY(-50%) translateX(0); }
+            50% { opacity: 1; transform: translateY(-50%) translateX(5px); }
+            100% { opacity: 0.5; transform: translateY(-50%) translateX(0); }
+        }
+
+        /* Custom Switches */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #e0e0e0;
+            transition: .3s;
+            border-radius: 22px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .slider { background-color: #4caf50; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Remote Control */
+        .joystick-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .control-btn {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            width: 64px;
+            height: 64px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+            box-shadow: 0 3px 0 #ddd;
+        }
+
+        .control-btn:hover { background: #eeeeee; }
+        .control-btn:active { 
+            background: #e0e0e0; 
+            transform: translateY(3px);
+            box-shadow: none;
+        }
+
+        .control-btn svg {
+            transition: fill 0.2s;
+        }
+        .control-btn:hover svg { fill: #333; }
+
+        /* Vertical Speed Slider */
+        .speed-slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 16px;
+        }
+
+        .vertical-slider {
+            appearance: none;
+            width: 6px;
+            height: 160px;
+            background: #ddd;
+            outline: none;
+            border-radius: 3px;
+            writing-mode: bt-lr; /* For older browsers */
+            -webkit-appearance: slider-vertical;
+        }
+
+        /* Map Canvas */
+        #mapCanvas {
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            border-radius: 20px;
+            cursor: crosshair;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        .status-busy { background: #e3f2fd; color: #1976d2; }
+        .status-battery { background: #e8f5e9; color: #2e7d32; }
+
+        /* Responsive adjustments */
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+                height: auto;
+            }
+            .panel { height: auto; }
+            #mapCanvas { min-height: 400px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <!-- Panel 1: AGV Information -->
+    <div class="panel">
+        <div class="header-box">AGV Information</div>
+        <div class="info-table-container">
+            <table class="info-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Target</th>
+                        <th>Speed</th>
+                        <th>Bat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="font-bold">01</td>
+                        <td><span class="status-badge status-busy">BUSY</span></td>
+                        <td>St. 02</td>
+                        <td>0.5 m/s</td>
+                        <td><span class="status-badge status-battery">95%</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="robot-preview-container">
+            <div class="flex flex-col">
+                <span class="text-purple-800 text-[10px] font-extrabold uppercase tracking-wider mb-2">Simulation</span>
+                <label class="switch">
+                    <input type="checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="robot-svg">
+                <div class="direction-indicator">▶</div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <span class="text-[10px] font-bold text-slate-700">START</span>
+                    <div class="w-8 h-8 bg-green-500 rounded-lg shadow-sm flex items-center justify-center text-white">▶</div>
+                </button>
+                <button class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <span class="text-[10px] font-bold text-slate-700">STOP</span>
+                    <div class="w-8 h-8 bg-red-500 rounded-lg shadow-sm flex items-center justify-center text-white text-xs">■</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl flex items-center justify-between">
+            <span class="text-purple-800 text-[10px] font-extrabold uppercase tracking-wider">Auto Mode</span>
+            <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Panel Phải: Bản đồ (Map) -->
+    <div class="panel" style="grid-row: span 2;">
+        <div class="header-box" style="margin-bottom: 10px; background: #eceff1; color: #546e7a; box-shadow: none;">Live Map Monitor</div>
+        <canvas id="mapCanvas"></canvas>
+    </div>
+
+    <!-- Panel 2: Manual Control -->
+    <div class="panel">
+        <div class="header-box" style="margin-bottom: 15px; font-size: 0.75rem; background: #78909c;">Manual Override</div>
+        <div class="grid grid-cols-4 gap-6 h-full items-center">
+            <div class="col-span-3 joystick-grid">
+                <div></div>
+                <button class="control-btn">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#757575"><path d="M12 4l-8 8h16l-8-8z"/></svg>
+                </button>
+                <div></div>
+                
+                <button class="control-btn">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#757575"><path d="M4 12l8 8v-16l-8 8z"/></svg>
+                </button>
+                <div class="flex flex-col items-center">
+                    <span class="text-[14px] font-black text-slate-400">4%</span>
+                    <span class="text-[8px] uppercase text-slate-400 font-bold">Power</span>
+                </div>
+                <button class="control-btn">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#757575"><path d="M20 12l-8-8v16l8-8z"/></svg>
+                </button>
+
+                <div></div>
+                <button class="control-btn">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#757575"><path d="M12 20l8-8h-16l8 8z"/></svg>
+                </button>
+                <div></div>
+            </div>
+
+            <div class="speed-slider-container">
+                <span class="text-[10px] font-bold text-slate-500 mb-2 uppercase">Speed</span>
+                <input type="range" class="vertical-slider" min="0" max="100" value="45">
+                <div class="mt-2 text-[10px] font-bold text-slate-400 italic">LIMIT</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const stations = [
+        { id: 1, x: 100, y: 350, label: "Trạm 8" },
+        { id: 2, x: 100, y: 550, label: "Trạm 2" },
+        { id: 3, x: 350, y: 350, label: "Trạm 7" },
+        { id: 4, x: 350, y: 550, label: "Trạm 3" },
+        { id: 5, x: 600, y: 350, label: "Trạm 6" },
+        { id: 6, x: 600, y: 550, label: "Trạm 1" },
+        { id: 7, x: 800, y: 550, label: "Trạm 4" },
+        { id: 8, x: 800, y: 350, label: "Trạm 5" },
+        { id: 9, x: 600, y: 150, label: "Trạm 10" },
+        { id: 10, x: 800, y: 150, label: "Trạm 9" },
+        { id: 11, x: 1000, y: 150, label: "Trạm 12" },
+        { id: 12, x: 1000, y: 350, label: "Trạm 11" }
+    ];
+
+    function drawMap() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        const scaleX = canvas.width / 1100;
+        const scaleY = canvas.height / 700;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Vẽ lưới nền mờ (Grid)
+        ctx.strokeStyle = '#f0f0f0';
+        ctx.lineWidth = 1;
+        for(let i=0; i<canvas.width; i+=40) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+        }
+        for(let i=0; i<canvas.height; i+=40) {
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Vẽ đường đi
+        ctx.strokeStyle = '#3d5afe';
+        ctx.setLineDash([]);
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+
+        const connections = [
+            [1, 3], [3, 5], [5, 12], 
+            [2, 4], [4, 6], [6, 7], 
+            [1, 9], [9, 10], [10, 11], 
+            [1, 2], [3, 4], [5, 6], [8, 7], [10, 8], [11, 12] 
+        ];
+
+        connections.forEach(([startIdx, endIdx]) => {
+            const s = stations.find(st => st.id === startIdx);
+            const e = stations.find(st => st.id === endIdx);
+            ctx.moveTo(s.x * scaleX, s.y * scaleY);
+            ctx.lineTo(e.x * scaleX, e.y * scaleY);
+        });
+        ctx.stroke();
+
+        // Vẽ đường cong bo tròn
+        ctx.beginPath();
+        ctx.arc(100 * scaleX, 450 * scaleY, 100 * scaleY, 0.5 * Math.PI, 1.5 * Math.PI);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(1000 * scaleX, 250 * scaleY, 100 * scaleY, 1.5 * Math.PI, 0.5 * Math.PI);
+        ctx.stroke();
+
+        // Vẽ các trạm
+        stations.forEach(station => {
+            const x = station.x * scaleX;
+            const y = station.y * scaleY;
+
+            // Shadow cho trạm
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 4;
+            
+            ctx.fillStyle = '#f44336';
+            ctx.beginPath();
+            ctx.arc(x, y, 7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0; // Reset shadow
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#455a64';
+            ctx.font = 'bold 11px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(station.label.toUpperCase(), x, y - 15);
+        });
+
+        // Vẽ Robot hiện tại
+        const robotPos = { x: 200, y: 550 };
+        const rW = 46 * scaleX;
+        const rH = 28 * scaleY;
+        
+        ctx.save();
+        ctx.translate(robotPos.x * scaleX, robotPos.y * scaleY);
+        
+        // Shadow robot
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 4;
+        
+        ctx.fillStyle = '#37474f';
+        ctx.beginPath();
+        ctx.roundRect(-rW/2, -rH/2, rW, rH, 6);
+        ctx.fill();
+        
+        // Chi tiết robot
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#263238';
+        ctx.fillRect(-rW/2 - 4, -rH/2 + 4, 6, 8); // Bánh xe
+        ctx.fillRect(-rW/2 - 4, rH/2 - 12, 6, 8);
+        
+        ctx.fillStyle = '#4fc3f7'; // Đèn tín hiệu
+        ctx.beginPath();
+        ctx.arc(rW/2 - 8, 0, 3, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+
+    window.onload = drawMap;
+    window.onresize = drawMap;
+</script>
+
+</body>
+</html>
